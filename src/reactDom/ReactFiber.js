@@ -1,7 +1,31 @@
-import { HostRoot } from './ReactWorkTags'
 import { NoEffect } from './ReactSideEffectTags'
+import {
+	IndeterminateComponent,
+	ClassComponent,
+	HostRoot,
+	HostComponent,
+	HostText,
+	HostPortal,
+	ForwardRef,
+	Fragment,
+	Mode,
+	ContextProvider,
+	ContextConsumer,
+	Profiler,
+	SuspenseComponent,
+	SuspenseListComponent,
+	DehydratedFragment,
+	FunctionComponent,
+	MemoComponent,
+	SimpleMemoComponent,
+	LazyComponent,
+	FundamentalComponent,
+	ScopeComponent,
+	Block,
+} from '../reactDom/ReactWorkTags';
 
-function FiberNode(tag) {
+
+function FiberNode(tag,pendingProps) {
 	// Instance
 	this.tag = tag;
 	// this.key = key;
@@ -17,7 +41,7 @@ function FiberNode(tag) {
 	//
 	// this.ref = null;
 	//
-	// this.pendingProps = pendingProps;
+	this.pendingProps = pendingProps;
 	this.memoizedProps = null;
 	this.updateQueue = null;
 	this.memoizedState = null;
@@ -72,9 +96,9 @@ function FiberNode(tag) {
 	// }
 }
 
-const createFiber = function(tag) {
+const createFiber = function(tag,pendingProps) {
 	// $FlowFixMe: the shapes are exact here but Flow doesn't like constructors
-	return new FiberNode(tag);
+	return new FiberNode(tag,pendingProps);
 };
 
 export function createHostRootFiber(tag) {
@@ -96,4 +120,225 @@ export function createHostRootFiber(tag) {
 
 	// return createFiber(HostRoot, null, null, mode);
 	return createFiber(HostRoot);
+}
+
+
+export function createWorkInProgress(current, pendingProps) {
+	let workInProgress = current.alternate;
+	debugger
+	if (workInProgress === null || workInProgress === undefined) {
+		// We use a double buffering pooling technique because we know that we'll
+		// only ever need at most two versions of a tree. We pool the "other" unused
+		// node that we're free to reuse. This is lazily created to avoid allocating
+		// extra objects for things that are never updated. It also allow us to
+		// reclaim the extra memory if needed.
+		workInProgress = createFiber(
+			current.tag,
+			pendingProps,
+			current.key,
+			current.mode,
+		);
+		workInProgress.elementType = current.elementType;
+		workInProgress.type = current.type;
+		workInProgress.stateNode = current.stateNode;
+
+		workInProgress.alternate = current;
+		current.alternate = workInProgress;
+	} else {
+		workInProgress.pendingProps = pendingProps;
+
+		// We already have an alternate.
+		// Reset the effect tag.
+		workInProgress.effectTag = NoEffect;
+
+		// The effect list is no longer valid.
+		workInProgress.nextEffect = null;
+		workInProgress.firstEffect = null;
+		workInProgress.lastEffect = null;
+	}
+
+	// workInProgress.childExpirationTime = current.childExpirationTime;
+	// workInProgress.expirationTime = current.expirationTime;
+
+	workInProgress.child = current.child;
+	workInProgress.memoizedProps = current.memoizedProps;
+	workInProgress.memoizedState = current.memoizedState;
+	workInProgress.updateQueue = current.updateQueue;
+
+	// Clone the dependencies object. This is mutated during the render phase, so
+	// it cannot be shared with the current fiber.
+	// const currentDependencies = current.dependencies;
+	// workInProgress.dependencies =
+	// 	currentDependencies === null
+	// 		? null
+	// 		: {
+	// 			expirationTime: currentDependencies.expirationTime,
+	// 			firstContext: currentDependencies.firstContext,
+	// 			responders: currentDependencies.responders,
+	// 		};
+
+	// These will be overridden during the parent's reconciliation
+	workInProgress.sibling = current.sibling;
+	// workInProgress.index = current.index;
+	// workInProgress.ref = current.ref;
+
+	return workInProgress;
+}
+
+export function createFiberFromTypeAndProps(
+	type, // React$ElementType
+	// key,
+	pendingProps,
+	owner,
+	mode,
+	// expirationTime:,
+) {
+	let fiber;
+
+	let fiberTag = IndeterminateComponent;
+	// The resolved type is set if we know what the final type will be. I.e. it's not lazy.
+	let resolvedType = type;
+	if (typeof type === 'function') {
+		// if (shouldConstruct(type)) {
+		// 	fiberTag = ClassComponent;
+		//
+		// }
+	} else if (typeof type === 'string') {
+		fiberTag = HostComponent;
+	} else {
+		// getTag: switch (type) {
+		// 	case REACT_FRAGMENT_TYPE:
+		// 		return createFiberFromFragment(
+		// 			pendingProps.children,
+		// 			mode,
+		// 			expirationTime,
+		// 			key,
+		// 		);
+		// 	case REACT_CONCURRENT_MODE_TYPE:
+		// 		fiberTag = Mode;
+		// 		mode |= ConcurrentMode | BlockingMode | StrictMode;
+		// 		break;
+		// 	case REACT_STRICT_MODE_TYPE:
+		// 		fiberTag = Mode;
+		// 		mode |= StrictMode;
+		// 		break;
+		// 	case REACT_PROFILER_TYPE:
+		// 		return createFiberFromProfiler(pendingProps, mode, expirationTime, key);
+		// 	case REACT_SUSPENSE_TYPE:
+		// 		return createFiberFromSuspense(pendingProps, mode, expirationTime, key);
+		// 	case REACT_SUSPENSE_LIST_TYPE:
+		// 		return createFiberFromSuspenseList(
+		// 			pendingProps,
+		// 			mode,
+		// 			expirationTime,
+		// 			key,
+		// 		);
+		// 	default: {
+		// 		if (typeof type === 'object' && type !== null) {
+		// 			switch (type.$$typeof) {
+		// 				case REACT_PROVIDER_TYPE:
+		// 					fiberTag = ContextProvider;
+		// 					break getTag;
+		// 				case REACT_CONTEXT_TYPE:
+		// 					// This is a consumer
+		// 					fiberTag = ContextConsumer;
+		// 					break getTag;
+		// 				case REACT_FORWARD_REF_TYPE:
+		// 					fiberTag = ForwardRef;
+		// 					if (__DEV__) {
+		// 						resolvedType = resolveForwardRefForHotReloading(resolvedType);
+		// 					}
+		// 					break getTag;
+		// 				case REACT_MEMO_TYPE:
+		// 					fiberTag = MemoComponent;
+		// 					break getTag;
+		// 				case REACT_LAZY_TYPE:
+		// 					fiberTag = LazyComponent;
+		// 					resolvedType = null;
+		// 					break getTag;
+		// 				case REACT_BLOCK_TYPE:
+		// 					fiberTag = Block;
+		// 					break getTag;
+		// 				case REACT_FUNDAMENTAL_TYPE:
+		// 					if (enableFundamentalAPI) {
+		// 						return createFiberFromFundamental(
+		// 							type,
+		// 							pendingProps,
+		// 							mode,
+		// 							expirationTime,
+		// 							key,
+		// 						);
+		// 					}
+		// 					break;
+		// 				case REACT_SCOPE_TYPE:
+		// 					if (enableScopeAPI) {
+		// 						return createFiberFromScope(
+		// 							type,
+		// 							pendingProps,
+		// 							mode,
+		// 							expirationTime,
+		// 							key,
+		// 						);
+		// 					}
+		// 			}
+		// 		}
+		// 		let info = '';
+		// 		if (__DEV__) {
+		// 			if (
+		// 				type === undefined ||
+		// 				(typeof type === 'object' &&
+		// 					type !== null &&
+		// 					Object.keys(type).length === 0)
+		// 			) {
+		// 				info +=
+		// 					' You likely forgot to export your component from the file ' +
+		// 					"it's defined in, or you might have mixed up default and " +
+		// 					'named imports.';
+		// 			}
+		// 			const ownerName = owner ? getComponentName(owner.type) : null;
+		// 			if (ownerName) {
+		// 				info += '\n\nCheck the render method of `' + ownerName + '`.';
+		// 			}
+		// 		}
+		// 		invariant(
+		// 			false,
+		// 			'Element type is invalid: expected a string (for built-in ' +
+		// 			'components) or a class/function (for composite components) ' +
+		// 			'but got: %s.%s',
+		// 			type == null ? type : typeof type,
+		// 			info,
+		// 		);
+		// 	}
+		// }
+	}
+
+	fiber = createFiber(fiberTag, pendingProps,
+		// key,
+		mode);
+	fiber.elementType = type;
+	fiber.type = resolvedType;
+	// fiber.expirationTime = expirationTime;
+
+	return fiber;
+}
+
+export function createFiberFromElement(
+	element,
+	mode,
+	// expirationTime: ExpirationTime,
+) {
+	let owner = null;
+	const type = element.type;
+	// const key = element.key;
+	const pendingProps = element.props;
+	debugger
+	const fiber = createFiberFromTypeAndProps(
+		type,
+		// key,
+		pendingProps,
+		owner,
+		mode,
+		// expirationTime,
+	);
+	return fiber;
 }

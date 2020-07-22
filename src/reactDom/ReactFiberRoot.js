@@ -1,4 +1,17 @@
 import { createHostRootFiber } from './ReactFiber'
+
+function initializeUpdateQueue(fiber) {
+	const queue = {
+		baseState: fiber.memoizedState,
+		baseQueue: null,
+		shared: {
+			pending: null
+		},
+		effects: null
+	};
+	fiber.updateQueue = queue;
+}
+
 function FiberRootNode(containerInfo, tag) {
 	this.tag = tag;
 	this.current = null;
@@ -41,7 +54,7 @@ export function createFiberRoot(containerInfo, tag){
 	root.current = uninitializedFiber;
 	uninitializedFiber.stateNode = root;
 
-	// initializeUpdateQueue(uninitializedFiber);
+	initializeUpdateQueue(uninitializedFiber);
 
 	return root;
 }

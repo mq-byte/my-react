@@ -1,5 +1,6 @@
 import { LegacyRoot } from './reactRootTags'
 import { createFiberRoot } from './ReactFiberRoot'
+import { updateContainer } from  '../reconciler/ReactFiberReconciler'
 
 function ReactDOMBlockingRoot(container, tag) {
 	this._internalRoot = createFiberRoot(container, tag);
@@ -32,7 +33,7 @@ function legacyRenderSubtreeIntoContainer(children, container) {
 		console.log(fiberRoot);
 		// Initial mount should not be batched.
 		// unbatchedUpdates(() => {
-		// 	updateContainer(children, fiberRoot, parentComponent, callback);
+			updateContainer(children, fiberRoot);
 		// });
 	} else {
 		// fiberRoot = root._internalRoot;
